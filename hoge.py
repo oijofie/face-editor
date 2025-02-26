@@ -8,6 +8,56 @@ import tkinter as tk
 from tkinter import filedialog
 
 
+class SceneChangeDetector:
+    """
+    連続するフレーム間の類似度を分析し、シーンの切り替わりを検出するクラス
+    """
+
+    def __init__(self, threshold=30.0):
+        """
+        初期化
+
+        Args:
+            threshold (float): シーン変更を検出する閾値（値が低いほど敏感に反応）
+        """
+        self.threshold = threshold
+        self.prev_frame_gray = None
+
+    def detect(self, frame):
+        """
+        フレームを分析し、シーンの変化を検出する
+
+        Args:
+            frame: 現在のフレーム（BGR形式）
+
+        Returns:
+            bool: シーンの変化が検出された場合はTrue、それ以外はFalse
+        """
+        # グレースケールに変換
+        current_frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        # 最初のフレームの場合
+        if self.prev_frame_gray is None:
+            self.prev_frame_gray = current_frame_gray
+            return False
+
+        # フレーム間の差分を計算
+        frame_diff = cv2.absdiff(current_frame_gray, self.prev_frame_gray)
+
+        # 差分画像の平均値を計算
+        diff_mean = cv2.mean(frame_diff)[0]
+
+        # 前のフレームを更新
+        self.prev_frame_gray = current_frame_gray
+
+        # 閾値を超えた場合はシーン変更と判定
+        return diff_mean > self.threshold
+
+    def reset(self):
+        """状態をリセット"""
+        self.prev_frame_gray = None
+
+
 class FaceTrackerApp:
     def __init__(
         self, video_path, overlay_path, scene_change_threshold=30.0, output_path=None
@@ -36,6 +86,7 @@ class FaceTrackerApp:
         self.face_tracker = FaceTracker(tracker_type="CSRT")
         self.video_processor = VideoProcessor(video_path, output_path)
         self.ui_helper = UIHelper()
+        self.scene_detector = SceneChangeDetector(scene_change_threshold)
 
         # リソース
         self.overlay_img = None
@@ -114,28 +165,27 @@ class FaceTrackerApp:
 
         return True
 
-    def _redetect_face(self, frame, track_success):
+    def _redetect_face(self, frame, track_success, scene_change):
         """顔の再検出処理"""
         faces = self.face_detector.detect_faces(frame, self.scale_factor)
+        print(f"再検出: 検出された顔の数: {len(faces)}")
 
         if len(faces) > 0:
             best_match_idx = 0
 
-            # シーン変更時またはトラッキングが失敗した場合
-            if not track_success:
-                # 顔検出結果を表示して選択
-                best_match_idx = self.ui_helper.display_faces(frame, faces)
+            # 顔検出結果を表示して選択
+            best_match_idx = self.ui_helper.display_faces(frame, faces)
+            print("best_match_idx", best_match_idx)
+
+            # 9を選んだらスキップするなどする
 
             # 選択された顔で更新
             x, y, w, h = faces[best_match_idx]
             self.bbox = (x, y, w, h)
 
-            # カット検出時や追跡失敗時はトラッカーをリセット
-            if not track_success:
-                self.face_tracker.reset_tracker(frame, self.bbox)
-                return True
-
-        return track_success
+            # トラッキング
+            self.face_tracker.reset_tracker(frame, self.bbox)
+        return True
 
     def _process_video(self):
         """ビデオフレームの処理"""
@@ -152,13 +202,31 @@ class FaceTrackerApp:
 
                 # トラッカーを更新
                 track_success, self.bbox = self.face_tracker.update_tracker(frame)
-
-                # 定期的またはトラッキングが失われた場合またはシーン変更時に顔を再検出
-                if self.frame_count % self.redetection_interval == 0:
-                    track_success = self._redetect_face(frame, track_success)
-
-                if not track_success:
-                    print(f"フレーム {self.frame_count}: 顔の追跡に失敗しました。")
+                # シーン変更検出
+                scene_change = self.scene_detector.detect(frame)
+                if (
+                    scene_change
+                    or not track_success
+                    or self.frame_count % self.redetection_interval == 0
+                ):
+                    seconds = self.frame_count / self.video_processor.fps
+                    minutes = int(seconds // 60)
+                    seconds = seconds % 60
+                    if scene_change:
+                        print(
+                            f"時間 {minutes:02d}:{seconds:05.2f} (フレーム {self.frame_count}): シーン変更を検出しました。"
+                        )
+                    elif not track_success:
+                        print(
+                            f"時間 {minutes:02d}:{seconds:05.2f} (フレーム {self.frame_count}): 顔の追跡に失敗しました。"
+                        )
+                    elif self.frame_count % self.redetection_interval == 0:
+                        print(
+                            f"時間 {minutes:02d}:{seconds:05.2f} (フレーム {self.frame_count}): 定期的な顔の再検出を行います。"
+                        )
+                    track_success = self._redetect_face(
+                        frame, track_success, scene_change
+                    )
 
                 if track_success:
                     # トラッキング成功
