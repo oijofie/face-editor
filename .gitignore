@@ -1,0 +1,17 @@
+# python generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# venv
+.venv
+
+.python-version
+requirements-dev.lock
+requirements.lock
+pyproject.toml
+output_input2.mp4
+
