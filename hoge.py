@@ -53,7 +53,6 @@ class FaceTrackerApp:
             return False
 
         # 画像にアルファチャンネルがない場合は追加
-        # ここでしっかり確認する
         if len(self.overlay_img.shape) == 2:  # グレースケール画像
             # グレースケールをBGRAに変換
             self.overlay_img = cv2.cvtColor(self.overlay_img, cv2.COLOR_GRAY2BGRA)
@@ -155,11 +154,11 @@ class FaceTrackerApp:
                 track_success, self.bbox = self.face_tracker.update_tracker(frame)
 
                 # 定期的またはトラッキングが失われた場合またはシーン変更時に顔を再検出
-                if (
-                    self.frame_count % self.redetection_interval == 0
-                    or not track_success
-                ):
+                if self.frame_count % self.redetection_interval == 0:
                     track_success = self._redetect_face(frame, track_success)
+
+                if not track_success:
+                    print(f"フレーム {self.frame_count}: 顔の追跡に失敗しました。")
 
                 if track_success:
                     # トラッキング成功

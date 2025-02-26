@@ -13,5 +13,5 @@ wheels/
 requirements-dev.lock
 requirements.lock
 pyproject.toml
-output_input2.mp4
+output*.mp4
 
