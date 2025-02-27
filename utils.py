@@ -286,6 +286,7 @@ class UIHelper:
             "select face to track (e.g. face 1 -> press '1')",
             display_frame,
         )
+        print("上書きしたい顔の番号を選択してください。該当しない場合は9")
 
         # ユーザーから入力を受け取る
         face_idx = 0
