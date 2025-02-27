@@ -76,9 +76,13 @@ class FaceTrackerApp:
 
         # 追跡用パラメータ
         self.frame_count = 0
-        self.redetection_interval = 30  # 30フレームごとに顔を再検出
+        # self.redetection_interval = 30  # 30フレームごとに顔を再検出
+        self.redetection_interval = 2000  # 30フレームごとに顔を再検出
         self.bbox = None
         self.scale_factor = None
+
+        # オーバーレイ実行フラグ
+        self.skip_overlay = False
 
         # 各コンポーネントのインスタンス化
         self.image_processor = ImageProcessor()
@@ -178,13 +182,18 @@ class FaceTrackerApp:
             print("best_match_idx", best_match_idx)
 
             # 9を選んだらスキップするなどする
+            if best_match_idx == 8:  # 9を選んだらスキップ
+                print("オーバーレイをスキップする")
+                self.skip_overlay = True
+                return track_success
+            else:
+                # 選択された顔で更新
+                self.skip_overlay = False
+                x, y, w, h = faces[best_match_idx]
+                self.bbox = (x, y, w, h)
 
-            # 選択された顔で更新
-            x, y, w, h = faces[best_match_idx]
-            self.bbox = (x, y, w, h)
-
-            # トラッキング
-            self.face_tracker.reset_tracker(frame, self.bbox)
+                # トラッキング
+                self.face_tracker.reset_tracker(frame, self.bbox)
         return True
 
     def _process_video(self):
@@ -212,6 +221,7 @@ class FaceTrackerApp:
                     seconds = self.frame_count / self.video_processor.fps
                     minutes = int(seconds // 60)
                     seconds = seconds % 60
+
                     if scene_change:
                         print(
                             f"時間 {minutes:02d}:{seconds:05.2f} (フレーム {self.frame_count}): シーン変更を検出しました。"
@@ -231,11 +241,12 @@ class FaceTrackerApp:
                 if track_success:
                     # トラッキング成功
                     x, y, w, h = [int(v) for v in self.bbox]
-
-                    # トラッキングされた顔に画像をオーバーレイ
-                    frame = self.image_processor.overlay_image(
-                        frame, self.overlay_img, x, y, w, h
-                    )
+                    # print(f"顔の座標: x={x}, y={y}, w={w}, h={h}")
+                    if w > 0 and h > 0 and not self.skip_overlay:
+                        # トラッキングされた顔に画像をオーバーレイ
+                        frame = self.image_processor.overlay_image(
+                            frame, self.overlay_img, x, y, w, h
+                        )
 
                 # フレームを出力ビデオに書き込む
                 self.video_processor.write_frame(frame)
