@@ -295,9 +295,9 @@ class UIHelper:
             # 数字キーが押されたか確認
             if ord("1") <= key <= ord("9"):
                 selected_idx = key - ord("1")  # 0から始まるインデックスに変換
-                if selected_idx < len(faces):
-                    face_idx = selected_idx
-                    break
+                # if selected_idx < len(faces): # 選択数より大きい場合の数を打つと存在しなかったことにする
+                face_idx = selected_idx
+                break
 
             # エスケープキーかEnterが押されたら最初の顔を選択
             if key == 27 or key == 13:  # ESCまたはEnter
