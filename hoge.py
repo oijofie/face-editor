@@ -13,7 +13,7 @@ class SceneChangeDetector:
     連続するフレーム間の類似度を分析し、シーンの切り替わりを検出するクラス
     """
 
-    def __init__(self, threshold=30.0):
+    def __init__(self, threshold):
         """
         初期化
 
@@ -50,7 +50,7 @@ class SceneChangeDetector:
         # 前のフレームを更新
         self.prev_frame_gray = current_frame_gray
 
-        # 閾値を超えた場合はシーン変更と判定
+        # 閾値を超えた場合はシーン変更と判定(True or Falseで返る)
         return diff_mean > self.threshold
 
     def reset(self):
@@ -60,7 +60,7 @@ class SceneChangeDetector:
 
 class FaceTrackerApp:
     def __init__(
-        self, video_path, overlay_path, scene_change_threshold=30.0, output_path=None
+        self, video_path, overlay_path, scene_change_threshold, output_path=None
     ):
         """
         video_path (str): 入力ビデオファイルのパス
@@ -181,7 +181,7 @@ class FaceTrackerApp:
             best_match_idx = self.ui_helper.display_faces(frame, faces)
             print("best_match_idx", best_match_idx)
 
-            # 9を選んだらスキップするなどする
+            # 9を選んだらoverlayしない
             if best_match_idx == 8:  # 9を選んだらスキップ
                 print("オーバーレイをスキップする")
                 self.skip_overlay = True
@@ -194,6 +194,20 @@ class FaceTrackerApp:
 
                 # トラッキング
                 self.face_tracker.reset_tracker(frame, self.bbox)
+
+        elif len(faces) == 0:
+            print("顔が検出されなかったため、overlayしない")
+            self.skip_overlay = True
+            # 顔が今回も前のフレームでもされていなかったら、次のフレームで再検出を試みる
+            # if self.bbox is None:
+            #     print(f"self.bbox is None: {self.bbox}")
+            #     return False  # 次のフレームで再検出を試みる
+            # # 以前の顔が検出されていたら、トラッカーをリセット（シーンが変わったのに以前の顔の位置を捉えてしまうため）
+            # else:
+            #     print(f"self.bbox is not None: {self.bbox}")
+            #     self.face_tracker.reset_tracker(frame, self.bbox)
+            #     return False  # 次のフレームで再検出を試みる
+
         return True
 
     def _process_video(self):
@@ -270,7 +284,7 @@ class FaceTrackerApp:
 
 
 def face_tracker_app(
-    video_path, overlay_path, scene_change_threshold=30.0, output_path=None
+    video_path, overlay_path, scene_change_threshold, output_path=None
 ):
     print("face_tracker_app")
     app = FaceTrackerApp(video_path, overlay_path, scene_change_threshold, output_path)
@@ -290,8 +304,8 @@ def main():
     parser.add_argument(
         "--threshold",
         type=float,
-        default=30.0,
-        help="カット検出の閾値（デフォルト: 30.0）",
+        default=30.0,  # TODO: 最適化を探る。10にしてもシーン変更検出回数が変わらない
+        help="カット検出の閾値（デフォルト: 30.0）低いほど反応に敏感",
     )
 
     args = parser.parse_args()
