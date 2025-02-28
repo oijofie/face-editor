@@ -10,9 +10,6 @@ wheels/
 .venv
 
 .python-version
-requirements-dev.lock
-requirements.lock
-pyproject.toml
 output*.mp4
 
 .DS_Store

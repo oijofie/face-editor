@@ -1,0 +1,29 @@
+[project]
+name = "src"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "oijofie", email = "oijofie@gmail.com" }
+]
+dependencies = [
+    "tqdm>=4.67.1",
+    "pillow>=11.1.0",
+    "matplotlib>=3.10.0",
+    "opencv-contrib-python>=4.11.0.86",
+]
+readme = "README.md"
+requires-python = ">= 3.8"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/src"]
